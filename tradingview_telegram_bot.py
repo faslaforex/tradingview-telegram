@@ -12,14 +12,29 @@ TELEGRAM_CHAT_ID = "7242939346"
 def webhook():
     print("=== WEBHOOK RECEIVED ===", file=sys.stderr, flush=True)
     try:
-        data = request.get_json()
-        print(f"Data: {data}", file=sys.stderr, flush=True)
+        # استقبال البيانات بأي صيغة
+        content_type = request.content_type
+        print(f"Content-Type: {content_type}", file=sys.stderr, flush=True)
         
+        # محاولة قراءة JSON
+        try:
+            data = request.get_json(force=True, silent=True)
+        except:
+            data = None
+        
+        # إذا ما في JSON، خذ النص العادي
+        if data is None:
+            data = request.data.decode('utf-8')
+        
+        print(f"Data received: {data}", file=sys.stderr, flush=True)
+        
+        # تحويل البيانات لرسالة
         if data:
-            message = str(data)
+            message = f"🔔 تنبيه من TradingView:\n\n{str(data)}"
         else:
-            message = "تنبيه من TradingView"
+            message = "🔔 تنبيه من TradingView"
         
+        # إرسال للتليجرام
         telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
         payload = {
             "chat_id": TELEGRAM_CHAT_ID,
@@ -28,8 +43,13 @@ def webhook():
         
         print(f"Sending to Telegram...", file=sys.stderr, flush=True)
         response = requests.post(telegram_url, json=payload, timeout=10)
-        print(f"Response: {response.status_code}", file=sys.stderr, flush=True)
-        print(f"Response body: {response.text}", file=sys.stderr, flush=True)
+        print(f"Telegram response: {response.status_code}", file=sys.stderr, flush=True)
+        print(f"Response: {response.text}", file=sys.stderr, flush=True)
+        
+        if response.status_code == 200:
+            print("✅ Message sent successfully!", file=sys.stderr, flush=True)
+        else:
+            print(f"❌ Failed to send: {response.text}", file=sys.stderr, flush=True)
         
         return {"status": "success"}, 200
         
